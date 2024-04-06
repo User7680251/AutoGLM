@@ -5,9 +5,31 @@ from fastapi import FastAPI, Request
 from model import is_chinese, get_infer_setting, generate_input, chat
 import datetime
 import torch
+import argparse
+from sat.model import AutoModel
+from transformers import AutoTokenizer
+from sat.model.mixins import CachedAutoregressiveMixin
+from finetune_visualglm import FineTuneVisualGLMModel
 
 gpu_number = 0
-model, tokenizer = get_infer_setting(gpu_device=gpu_number)
+parser = argparse.ArgumentParser()
+parser.add_argument("--from_pretrained", type=str, default="visualglm-6b", help='pretrained ckpt')
+args = parser.parse_args()
+
+# load model
+model, model_args = AutoModel.from_pretrained(
+    args.from_pretrained,
+    args=argparse.Namespace(
+    fp16=True,
+    skip_init=True,
+    use_gpu_initialization=True if (torch.cuda.is_available()) else False,
+    device='cuda' if (torch.cuda.is_available()) else 'cpu',
+))
+model = model.eval()
+
+model.add_mixin('auto-regressive', CachedAutoregressiveMixin())
+
+tokenizer = AutoTokenizer.from_pretrained("PiaoYang/chatglm-6b", trust_remote_code=True)
 
 app = FastAPI()
 @app.post('/')
