@@ -27,3 +27,6 @@
 # api
 export HF_ENDPOINT=https://hf-mirror.com
 python api.py --from_pretrained /home/AutoGLM/checkpoints/lora_CODA100_1
+
+# streamlit web ui 
+streamlit run utils/webui.py --server.address 0.0.0.0
