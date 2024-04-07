@@ -26,4 +26,4 @@
 
 # api
 export HF_ENDPOINT=https://hf-mirror.com
-python api.py --from_pretrained /home/AutoGLM/checkpoints/ptuning_CODA1500
+python api.py --from_pretrained /home/AutoGLM/checkpoints/lora_CODA100_1

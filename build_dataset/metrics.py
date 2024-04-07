@@ -2,8 +2,8 @@ import json
 import requests
 import base64
 from nltk.translate.bleu_score import sentence_bleu
-from rouge import Rouge
 from tqdm import tqdm
+from bert_score import score
 
 
 # FastAPI应用的URL
@@ -16,7 +16,7 @@ def image_to_base64(image_path):
     return base64.b64encode(image_data).decode('utf-8')
 
 # 步骤1: 从JSON文件中读取数据
-json_path = "/home/AutoGLM/test.json"
+json_path = "/home/AutoGLM/data/coda_sample/CODA/sample/output1.json"
 with open(json_path, 'r', encoding='utf-8') as file:
     dataset = json.load(file)
 
@@ -54,30 +54,26 @@ for item in tqdm(dataset, desc="Sending requests"):
         print(f"Error: {response.status_code}")
         responses.append("")  # 或者其他适当的错误处理
 
-# 步骤3: 计算BLEU和ROUGE分数
-rouge = Rouge()
+# 使用bert-score计算分数
+refs = [label[label.find('[') + 1:label.find(']')] for label in labels]  # 提取标签中的文本部分
+hyps = [response[response.find('[') + 1:response.find(']')] for response in responses]  # 提取响应中的文本部分
 
+# 计算Score
+P, R, F1 = score(hyps, refs, lang="zh", verbose=True)
 bleu_scores = []
-rouge_scores = []
 
-for ref, hyp in tqdm(zip(labels, responses), desc="Calculating scores"):
+for ref, hyp in tqdm(zip(refs, hyps), desc="Calculating scores"):
     # BLEU分数计算
-    reference = [ref.split()]  # 将参考翻译转换为单词列表的列表
-    hypothesis = hyp.split()  # 将候选翻译转换为单词列表
+    reference = [list(ref)]  # 将参考翻译转换为单词列表的列表
+    hypothesis = list(hyp)  # 将候选翻译转换为单词列表
     bleu = sentence_bleu(reference, hypothesis)
     bleu_scores.append(bleu)
 
-    # ROUGE分数计算
-    scores = rouge.get_scores(hyp, ref)
-    rouge_scores.append(scores[0])  # scores是一个字典列表，我们只需要第一个字典
-
 # 打印平均分数
 avg_bleu = sum(bleu_scores) / len(bleu_scores)
-avg_rouge1 = sum([s['rouge-1']['f'] for s in rouge_scores]) / len(rouge_scores)
-avg_rouge2 = sum([s['rouge-2']['f'] for s in rouge_scores]) / len(rouge_scores)
-avg_rougeL = sum([s['rouge-l']['f'] for s in rouge_scores]) / len(rouge_scores)
-
 print(f"平均BLEU分数: {avg_bleu}")
-print(f"平均ROUGE-1分数: {avg_rouge1}")
-print(f"平均ROUGE-2分数: {avg_rouge2}")
-print(f"平均ROUGE-L分数: {avg_rougeL}")
+
+# 打印平均分数
+print(f"平均BERTScore Precision: {P.mean():.6f}")
+print(f"平均BERTScore Recall: {R.mean():.6f}")
+print(f"平均BERTScore F1: {F1.mean():.6f}")
