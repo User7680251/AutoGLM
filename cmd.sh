@@ -9,5 +9,5 @@
 # # streamlit web ui 
 # streamlit run utils/webui.py --server.address 0.0.0.0 --server.enableXsrfProtection=false
 
-# get metrics
-bash metrics/metrics.sh
+# # get metrics
+# bash metrics/metrics.sh
