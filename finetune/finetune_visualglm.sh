@@ -36,7 +36,7 @@ gpt_options=" \
        --warmup .02 \
        --checkpoint-activations \
        --save-interval 3000 \
-       --eval-interval 1 \
+       --eval-interval 100 \
        --save "./checkpoints" \
        --split 1 \
        --eval-iters 10 \
@@ -46,7 +46,7 @@ gpt_options=" \
        --batch-size 4 \
        --skip-init \
        --bf16 \
-       --use_ptuning
+       --use_lora
 "
 
               

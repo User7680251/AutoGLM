@@ -106,7 +106,6 @@ def forward_step(data_iterator, model, args, timers):
 
 cached_autoregressive_added = False
 def eval_step(data_iterator, model, args, timers):
-    print("___________Evaluation step___________")
     """Evaluation step."""
 
     # Get the batch.
@@ -137,7 +136,6 @@ def eval_step(data_iterator, model, args, timers):
 
     # 步骤1: 从JSON文件中读取数据
     json_path = (args.valid_data)[0]
-    json_path = '/home/AutoGLM/test.json'
     with open(json_path, 'r', encoding='utf-8') as file:
         dataset = json.load(file)
         
