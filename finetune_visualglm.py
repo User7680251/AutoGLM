@@ -4,9 +4,13 @@ import argparse
 
 from sat import mpu, get_args, get_tokenizer
 from sat.training.deepspeed_training import training_main
-from model import VisualGLMModel
+from model import VisualGLMModel, chat
 from sat.model.finetune import PTuningV2Mixin
 from sat.model.finetune.lora2 import LoraMixin
+from transformers import AutoTokenizer
+from tqdm import tqdm
+
+from metrics.metrics import calculate_metrics
 
 class FineTuneVisualGLMModel(VisualGLMModel):
     def __init__(self, args, transformer=None, parallel_output=True, **kw_args):
@@ -98,6 +102,70 @@ def forward_step(data_iterator, model, args, timers):
     lm_logits = lm_logits.to(dtype)
     loss = loss.to(dtype)
     return loss, {'loss': loss}
+
+def eval_step(data_iterator, model, args, timers):
+
+    print("___________Evaluation step___________")
+    """Evaluation step."""
+
+    # Get the batch.
+    timers('batch generator').start()
+    tokens, labels, image, pre_image = get_batch(
+        data_iterator, args, timers)
+    timers('batch generator').stop()
+
+    # Forward pass without calculating loss
+    with torch.no_grad():
+        logits = model(input_ids=tokens, image=image, pre_image=pre_image)[0]
+
+    dtype = logits.dtype
+    lm_logits = logits.to(torch.float32)
+
+    # Shift so that tokens < n predict n
+    shift_logits = lm_logits[..., :-1, :].contiguous()
+    shift_labels = labels[..., 1:].contiguous()
+    # Flatten the tokens
+    loss_fct = CrossEntropyLoss(ignore_index=-100)
+    loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
+    lm_logits = lm_logits.to(dtype)
+    loss = loss.to(dtype)
+
+    print("___________New Code___________")
+    # 步骤1: 从JSON文件中读取数据
+    json_path = (args.valid_data)[0]
+    with open(json_path, 'r', encoding='utf-8') as file:
+        dataset = json.load(file)
+        
+    # 存储响应的列表
+    responses = []
+    tokenizer = AutoTokenizer.from_pretrained("PiaoYang/chatglm-6b", trust_remote_code=True)
+
+    # 遍历数据集并使用chat函数生成响应
+    for item in tqdm(dataset, desc="Generating responses"):
+        # 构造chat函数所需的数据
+        image_path = item['img']
+        query = "任务：图片中为汽车在行驶，请观察路况并输出按照给定格式输出驾驶动作和推理过程。"
+
+        # 使用chat函数生成响应
+        try:
+            response, _, _ = chat(
+                image_path,
+                model,
+                tokenizer,
+                query
+            )
+            responses.append(response)
+        except Exception as e:
+            print(f"Error generating response: {e}")
+
+    print("___________Metrics___________")
+    print("label:", labels)
+    print("resp:", responses)
+    # Calculate metrics using the provided function
+    metrics = calculate_metrics(labels, responses)
+
+    return loss, {'loss': loss, **metrics} 
 
 
 from model.blip2 import BlipImageEvalProcessor
@@ -191,4 +259,4 @@ if __name__ == '__main__':
             'pre_image': example['pre_image']
         }
         return ret
-    training_main(args, model_cls=model, forward_step_function=forward_step, create_dataset_function=create_dataset_function, collate_fn=data_collator)
+    training_main(args, model_cls=model, forward_step_function=forward_step, create_dataset_function=create_dataset_function, collate_fn=data_collator, forward_step_eval=eval_step)

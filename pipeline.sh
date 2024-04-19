@@ -4,7 +4,7 @@
 # 微调模型
 export HF_ENDPOINT=https://hf-mirror.com
 SAT_HOME=/root/.sat_models 
-bash finetune/finetune_visualglm_lora.sh
+bash finetune/finetune_visualglm.sh
 
 # # web ui 
 # bash web_ui/web_ui.sh

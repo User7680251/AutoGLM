@@ -18,8 +18,8 @@ OPTIONS_NCCL="NCCL_DEBUG=info NCCL_IB_DISABLE=0 NCCL_NET_GDR_LEVEL=2"
 HOST_FILE_PATH="hostfile"
 HOST_FILE_PATH="hostfile_single"
 
-train_data="./data/coda_sample/CODA/sample/rev.json"
-eval_data="./data/coda_sample/CODA/sample/rev.json"
+train_data="/home/AutoGLM/data/train_set.json"
+eval_data="/home/AutoGLM/data/test_set.json"
 
 
 gpt_options=" \
@@ -36,7 +36,7 @@ gpt_options=" \
        --warmup .02 \
        --checkpoint-activations \
        --save-interval 3000 \
-       --eval-interval 10000 \
+       --eval-interval 1 \
        --save "./checkpoints" \
        --split 1 \
        --eval-iters 10 \
