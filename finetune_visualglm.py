@@ -9,6 +9,7 @@ from sat.model.finetune import PTuningV2Mixin
 from sat.model.finetune.lora2 import LoraMixin
 from transformers import AutoTokenizer
 from tqdm import tqdm
+from sat.model.mixins import CachedAutoregressiveMixin
 
 from metrics.metrics import calculate_metrics
 
@@ -103,8 +104,8 @@ def forward_step(data_iterator, model, args, timers):
     loss = loss.to(dtype)
     return loss, {'loss': loss}
 
+cached_autoregressive_added = False
 def eval_step(data_iterator, model, args, timers):
-
     print("___________Evaluation step___________")
     """Evaluation step."""
 
@@ -131,12 +132,17 @@ def eval_step(data_iterator, model, args, timers):
     lm_logits = lm_logits.to(dtype)
     loss = loss.to(dtype)
 
-    print("___________New Code___________")
+    if 'auto-regressive' not in model.mixins:
+        model.add_mixin('auto-regressive', CachedAutoregressiveMixin())
+
     # 步骤1: 从JSON文件中读取数据
     json_path = (args.valid_data)[0]
+    json_path = '/home/AutoGLM/test.json'
     with open(json_path, 'r', encoding='utf-8') as file:
         dataset = json.load(file)
         
+    # 提取标签列表
+    labels = [item['label'] for item in dataset]
     # 存储响应的列表
     responses = []
     tokenizer = AutoTokenizer.from_pretrained("PiaoYang/chatglm-6b", trust_remote_code=True)
@@ -148,22 +154,21 @@ def eval_step(data_iterator, model, args, timers):
         query = "任务：图片中为汽车在行驶，请观察路况并输出按照给定格式输出驾驶动作和推理过程。"
 
         # 使用chat函数生成响应
-        try:
-            response, _, _ = chat(
-                image_path,
-                model,
-                tokenizer,
-                query
-            )
-            responses.append(response)
-        except Exception as e:
-            print(f"Error generating response: {e}")
+        with torch.no_grad():
+            try:
+                response, _, _ = chat(
+                    image_path,
+                    model,
+                    tokenizer,
+                    query
+                )
+                responses.append(response)
+            except Exception as e:
+                print(f"Error generating response: {e}")
 
-    print("___________Metrics___________")
-    print("label:", labels)
-    print("resp:", responses)
     # Calculate metrics using the provided function
     metrics = calculate_metrics(labels, responses)
+    print(metrics)
 
     return loss, {'loss': loss, **metrics} 
 
