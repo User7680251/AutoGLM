@@ -7,6 +7,11 @@ from bert_score import score
 import os
 import argparse
 import time
+import torch
+from transformers import AutoTokenizer
+from torch.nn import CrossEntropyLoss
+
+from finetune_visualglm import get_batch
 
 
 def calculate_metrics(labels, responses):
@@ -41,31 +46,43 @@ def calculate_metrics(labels, responses):
     }
 
 
-def func(data_iterator, model, args, timers):
-    import torch
-    from model import is_chinese, get_infer_setting, generate_input, chat
-    from transformers import AutoTokenizer
-    from finetune_visualglm import get_batch
+def eval_step(data_iterator, model, args, timers):
+    """Evaluation step."""
 
-    tokenizer = AutoTokenizer.from_pretrained("PiaoYang/chatglm-6b", trust_remote_code=True)
-    input_para = {
-        "max_length": 2048,
-        "min_length": 50,
-        "temperature": 0.8,
-        "top_p": 0.4,
-        "top_k": 100,
-        "repetition_penalty": 1.2
-    }
     # Get the batch.
     timers('batch generator').start()
     tokens, labels, image, pre_image = get_batch(
         data_iterator, args, timers)
     timers('batch generator').stop()
 
-    is_zh = is_chinese(tokens)
-    input_data = generate_input(tokens, None, history, input_para)
-    gen_kwargs = input_data['gen_kwargs']
+    # Forward pass without calculating loss
     with torch.no_grad():
-        answer, history, _ = chat(None, model, tokenizer, tokens, history=history, image=image, \
-                            max_length=gen_kwargs['max_length'], top_p=gen_kwargs['top_p'], \
-                            top_k = gen_kwargs['top_k'], temperature=gen_kwargs['temperature'], english=not is_zh)
+        logits = model(input_ids=tokens, image=image, pre_image=pre_image)[0]
+
+    dtype = logits.dtype
+    lm_logits = logits.to(torch.float32)
+
+    # Shift so that tokens < n predict n
+    shift_logits = lm_logits[..., :-1, :].contiguous()
+    shift_labels = labels[..., 1:].contiguous()
+    # Flatten the tokens
+    loss_fct = CrossEntropyLoss(ignore_index=-100)
+    loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+
+    lm_logits = lm_logits.to(dtype)
+    loss = loss.to(dtype)
+
+    # Convert logits to predicted tokens
+    predicted_tokens = torch.argmax(logits, dim=-1)
+
+    # Decode tokens into responses (complete sentences)
+    tokenizer = AutoTokenizer.from_pretrained("PiaoYang/chatglm-6b", trust_remote_code=True)
+    responses = []
+    for predicted_token_sequence in predicted_tokens:
+        response = tokenizer.decode(predicted_token_sequence, skip_special_tokens=True)
+        responses.append(response)
+
+    # Calculate metrics using the provided function
+    metrics = calculate_metrics(labels, responses)
+
+    return loss, {'loss': loss, **metrics} 
