@@ -18,15 +18,15 @@ OPTIONS_NCCL="NCCL_DEBUG=info NCCL_IB_DISABLE=0 NCCL_NET_GDR_LEVEL=2"
 HOST_FILE_PATH="hostfile"
 HOST_FILE_PATH="hostfile_single"
 
-train_data="./data/coda_sample/CODA/sample/output1.json"
-eval_data="./data/coda_sample/CODA/sample/output1.json"
+train_data="./data/coda_sample/CODA/sample/rev.json"
+eval_data="./data/coda_sample/CODA/sample/rev.json"
 
 
 gpt_options=" \
        --experiment-name finetune-$MODEL_TYPE \
        --model-parallel-size ${MP_SIZE} \
        --mode finetune \
-       --train-iters 1000 \
+       --train-iters 6000 \
        --resume-dataloader \
        $MODEL_ARGS \
        --train-data ${train_data} \
@@ -35,7 +35,7 @@ gpt_options=" \
        --lr-decay-style cosine \
        --warmup .02 \
        --checkpoint-activations \
-       --save-interval 500 \
+       --save-interval 3000 \
        --eval-interval 10000 \
        --save "./checkpoints" \
        --split 1 \
@@ -46,7 +46,7 @@ gpt_options=" \
        --batch-size 4 \
        --skip-init \
        --bf16 \
-       --use_lora
+       --use_ptuning
 "
 
               
