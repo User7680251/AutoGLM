@@ -22,16 +22,12 @@ def calculate_metrics(labels, responses):
     refs_reasons = []
     hyps_reasons = []
 
-    ref_actions = []
-    hyp_actions = []
-
     # 提取标签和响应中的动作和推理文本
     for label, response in zip(labels, responses):
         try:
             # 尝试提取动作
             ref_action = label[label.find('{') + 1:label.find('}')]
             hyp_action = response[response.find('{') + 1:response.find('}')]
-
             # 尝试提取推理文本
             ref_reason = label[label.find('[') + 1:label.find(']')]
             hyp_reason = response[response.find('[') + 1:response.find(']')]
@@ -39,10 +35,6 @@ def calculate_metrics(labels, responses):
             # 将提取的推理文本添加到列表中
             refs_reasons.append(ref_reason)
             hyps_reasons.append(hyp_reason)
-
-            ref_actions.append(ref_action)
-            hyp_actions.append(hyp_action)
-
         except ValueError:
             # 如果提取失败，则跳过该样本，并在最后计算平均分时给出0分
             continue
@@ -50,14 +42,8 @@ def calculate_metrics(labels, responses):
     # 如果成功提取了任何样本，计算准确率
     if refs_reasons and hyps_reasons:
         # 准确率计算
-        accuracy_count = 0
-        for ref, hyp in zip(ref_actions, hyp_actions):
-            if ref == hyp:
-                accuracy_count += 1
-
-        # 计算准确率
-        accuracy = accuracy_count / len(ref_actions)
-        # print(f"准确率: {accuracy:.6f}")
+        accuracy_count = sum(ref == hyp for ref, hyp in zip(ref_action, hyp_action))
+        accuracy = accuracy_count / len(ref_action)
 
         # 计算BERTScore
         P, R, F1 = score(hyps_reasons, refs_reasons, lang="zh", verbose=True)
@@ -153,9 +139,10 @@ def run_metrics():
         if retries == max_retries:
             print(f"Error: Max retries reached for item {item}")
 
-
+    print("1")
     # 调用metric函数计算指标
     metrics = calculate_metrics(labels, responses)
+    print("2")
 
     # 首先，我们将要打印的指标整理成字符串
     metrics_str = """
@@ -206,7 +193,6 @@ def run_metrics():
 
     # 打印指标
     print(metrics_str)
-
 
 if __name__ == '__main__':
     run_metrics()

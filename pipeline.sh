@@ -6,5 +6,8 @@ export HF_ENDPOINT=https://hf-mirror.com
 SAT_HOME=/root/.sat_models 
 bash finetune/finetune_visualglm.sh
 
+# # metrics
+# bash metrics/metrics.sh
+
 # # web ui 
 # bash web_ui/web_ui.sh
