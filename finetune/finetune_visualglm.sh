@@ -26,7 +26,7 @@ gpt_options=" \
        --experiment-name finetune-$MODEL_TYPE \
        --model-parallel-size ${MP_SIZE} \
        --mode finetune \
-       --train-iters 6000 \
+       --train-iters 3000 \
        --resume-dataloader \
        $MODEL_ARGS \
        --train-data ${train_data} \
@@ -39,7 +39,7 @@ gpt_options=" \
        --eval-interval 100 \
        --save "./checkpoints" \
        --split 1 \
-       --eval-iters 10 \
+       --eval-iters 1 \
        --eval-batch-size 8 \
        --zero-stage 1 \
        --lr 0.0001 \

@@ -57,6 +57,7 @@ def calculate_metrics(labels, responses):
 
         # 计算准确率
         accuracy = accuracy_count / len(ref_actions)
+        print("准确率:", accuracy_count, "/", len(ref_actions))
         # print(f"准确率: {accuracy:.6f}")
 
         # 计算BERTScore

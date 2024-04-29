@@ -18,15 +18,15 @@ OPTIONS_NCCL="NCCL_DEBUG=info NCCL_IB_DISABLE=0 NCCL_NET_GDR_LEVEL=2"
 HOST_FILE_PATH="hostfile"
 HOST_FILE_PATH="hostfile_single"
 
-train_data="/home/AutoGLM/data/CODA-val-1500/CODA/base-val-1500/rev1500.json"
-eval_data="/home/AutoGLM/data/CODA-val-1500/CODA/base-val-1500/rev1500.json"
+train_data="/home/AutoGLM/data/train_rev.json"
+eval_data="/home/AutoGLM/data/test_rev.json"
 
 
 gpt_options=" \
        --experiment-name finetune-$MODEL_TYPE \
        --model-parallel-size ${MP_SIZE} \
        --mode finetune \
-       --train-iters 1000 \
+       --train-iters 6000 \
        --resume-dataloader \
        $MODEL_ARGS \
        --train-data ${train_data} \
@@ -35,11 +35,11 @@ gpt_options=" \
        --lr-decay-style cosine \
        --warmup .02 \
        --checkpoint-activations \
-       --save-interval 500 \
-       --eval-interval 10000 \
+       --save-interval 3000 \
+       --eval-interval 500 \
        --save "./checkpoints" \
        --split 1 \
-       --eval-iters 10 \
+       --eval-iters 1 \
        --eval-batch-size 8 \
        --zero-stage 1 \
        --lr 0.0001 \
