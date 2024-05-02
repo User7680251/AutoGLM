@@ -149,7 +149,7 @@ def eval_step(data_iterator, model, args, timers):
     for item in tqdm(dataset, desc="Generating responses"):
         # 构造chat函数所需的数据
         image_path = item['img']
-        query = "任务：图片中为汽车在行驶，请观察路况并输出按照给定格式输出驾驶动作和推理过程。"
+        query = item['prompt']
 
         # 使用chat函数生成响应
         with torch.no_grad():

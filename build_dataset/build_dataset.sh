@@ -11,3 +11,7 @@ python build_dataset/3_split_dataset.py
 # reverse label
 python build_dataset/4_label_reverse.py --input_json_path data/train_set.json
 python build_dataset/4_label_reverse.py --input_json_path data/test_set.json
+
+# answer only
+python build_dataset/5_label_answer_only.py --input_json_path data/train_set.json
+python build_dataset/5_label_answer_only.py --input_json_path data/test_set.json

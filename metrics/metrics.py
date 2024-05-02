@@ -119,7 +119,7 @@ def run_metrics():
     for item in tqdm(dataset, desc="Sending requests"):
         # 构造请求数据
         data = {
-            "text": "任务：图片中为汽车在行驶,请观察路况并输出按照给定格式输出驾驶动作和推理过程。",
+            "text": item['prompt'],
             "image": image_to_base64(item['img']),
             "history": None
         }
@@ -138,6 +138,7 @@ def run_metrics():
                     
                     # 提取result字段
                     result = parsed_json.get('result', None)
+                    print(result)
                     responses.append(result)
                     break  # 如果成功，则跳出循环
                 else:
