@@ -51,6 +51,15 @@ def calculate_metrics(labels, responses):
             ref_actions.append(ref_action)
             hyp_actions.append(hyp_action)
 
+            ref_index = action_to_index[ref_action]
+            hyp_index = action_to_index[hyp_action]
+            
+            confusion_matrix[ref_index, hyp_index] += 1
+
+        except KeyError:
+            # 如果提取的动作不在action_to_index映射中，跳过该样本
+            continue
+
         except ValueError:
             # 如果提取失败，则跳过该样本，并在最后计算平均分时给出0分
             continue
@@ -67,30 +76,33 @@ def calculate_metrics(labels, responses):
         bleu_scores = [sentence_bleu([list(ref)], list(hyp)) for ref, hyp in zip(refs_reasons, hyps_reasons)]
         avg_bleu = sum(bleu_scores) / len(bleu_scores)
 
-        ref_index = action_to_index[ref_action]
-        hyp_index = action_to_index[hyp_action]
-        
-        confusion_matrix[ref_index, hyp_index] += 1
-
         # 从混淆矩阵中计算true positive, false positive, false negative
-    true_positive = torch.diag(confusion_matrix)
-    false_positive = confusion_matrix.sum(dim=0) - true_positive
-    false_negative = confusion_matrix.sum(dim=1) - true_positive
+        true_positive = torch.diag(confusion_matrix)
+        false_positive = confusion_matrix.sum(dim=1) - true_positive
+        false_negative = confusion_matrix.sum(dim=0) - true_positive
 
-    # 计算召回率和精确率
-    recall = true_positive / (true_positive + false_negative)
-    precision = true_positive / (true_positive + false_positive)
+        # 防止分母为零
+        recall = torch.where(
+            (true_positive + false_negative) != 0,
+            true_positive / (true_positive + false_negative),
+            torch.zeros_like(true_positive)
+        )
+        precision = torch.where(
+            (true_positive + false_positive) != 0,
+            true_positive / (true_positive + false_positive),
+            torch.zeros_like(true_positive)
+        )
 
-    # 计算F1分数
-    f1 = 2 * (precision * recall) / (precision + recall)
+        # 计算F1分数
+        f1 = 2 * (precision * recall) / (precision + recall + 1e-6)
 
-    # 计算宏观平均的召回率、精确率和F1分数
-    macro_recall = recall.mean()
-    macro_precision = precision.mean()
-    macro_f1 = f1.mean()
+        # 计算宏观平均的召回率、精确率和F1分数
+        macro_recall = recall.mean()
+        macro_precision = precision.mean()
+        macro_f1 = f1.mean()
 
-    # 计算准确率
-    accuracy = true_positive.sum() / confusion_matrix.sum()
+        # 计算准确率
+        accuracy = true_positive.sum() / confusion_matrix.sum()
 
     return {
         "accuracy": torch.tensor(accuracy, dtype=torch.float32).cuda(),
@@ -169,7 +181,7 @@ def run_metrics():
     for item in tqdm(dataset, desc="Sending requests"):
         # 构造请求数据
         data = {
-            "text": item['prompt'],
+            "text": "任务：图片中为汽车在行驶，请观察路况并输出按照给定格式输出驾驶动作和推理过程。输出：",
             "image": image_to_base64(item['img']),
             "history": None
         }

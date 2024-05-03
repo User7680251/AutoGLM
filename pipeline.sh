@@ -5,8 +5,10 @@
 export HF_ENDPOINT=https://hf-mirror.com
 SAT_HOME=/root/.sat_models 
 bash finetune/1.sh
-bash finetune/2_1.sh
-bash finetune/2_2.sh
+bash finetune/2.sh
+bash finetune/3.sh
+bash finetune/4.sh
+bash finetune/5.sh
 
 # # metrics
 # bash metrics/metrics.sh
