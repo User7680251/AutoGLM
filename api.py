@@ -43,7 +43,7 @@ async def visual_glm(request: Request):
     input_para = {
         "max_length": 2048,
         "min_length": 50,
-        "temperature": 1.9,
+        "temperature": 2.0,
         "top_p": 0.4,
         "top_k": 100,
         "repetition_penalty": 1.2

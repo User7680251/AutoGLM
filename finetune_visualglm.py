@@ -165,7 +165,7 @@ def eval_step(data_iterator, model, args, timers):
                 print(f"Error generating response: {e}")
 
     # Calculate metrics using the provided function
-    metrics = calculate_metrics(labels, responses)
+    metrics, _ = calculate_metrics(labels, responses)
     print(metrics)
 
     return loss, {'loss': loss, **metrics} 
