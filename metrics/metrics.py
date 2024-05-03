@@ -8,6 +8,8 @@ import torch
 import time
 import argparse
 import os
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def calculate_metrics(labels, responses):
@@ -24,6 +26,12 @@ def calculate_metrics(labels, responses):
 
     ref_actions = []
     hyp_actions = []
+
+    # 定义动作到索引的映射
+    action_to_index = {'NS': 0, 'DS': 1, 'EM': 2}
+
+    # 初始化混淆矩阵
+    confusion_matrix = torch.zeros(3, 3, dtype=torch.int64).cuda()
 
     # 提取标签和响应中的动作和推理文本
     for label, response in zip(labels, responses):
@@ -49,17 +57,6 @@ def calculate_metrics(labels, responses):
 
     # 如果成功提取了任何样本，计算准确率
     if refs_reasons and hyps_reasons:
-        # 准确率计算
-        accuracy_count = 0
-        for ref, hyp in zip(ref_actions, hyp_actions):
-            if ref == hyp:
-                accuracy_count += 1
-
-        # 计算准确率
-        accuracy = accuracy_count / len(ref_actions)
-        print("准确率:", accuracy_count, "/", len(ref_actions))
-        # print(f"准确率: {accuracy:.6f}")
-
         # 计算BERTScore
         P, R, F1 = score(hyps_reasons, refs_reasons, lang="zh", verbose=True)
         avg_bert_precision = P.mean()
@@ -70,13 +67,66 @@ def calculate_metrics(labels, responses):
         bleu_scores = [sentence_bleu([list(ref)], list(hyp)) for ref, hyp in zip(refs_reasons, hyps_reasons)]
         avg_bleu = sum(bleu_scores) / len(bleu_scores)
 
+        ref_index = action_to_index[ref_action]
+        hyp_index = action_to_index[hyp_action]
+        
+        confusion_matrix[ref_index, hyp_index] += 1
+
+        # 从混淆矩阵中计算true positive, false positive, false negative
+    true_positive = torch.diag(confusion_matrix)
+    false_positive = confusion_matrix.sum(dim=0) - true_positive
+    false_negative = confusion_matrix.sum(dim=1) - true_positive
+
+    # 计算召回率和精确率
+    recall = true_positive / (true_positive + false_negative)
+    precision = true_positive / (true_positive + false_positive)
+
+    # 计算F1分数
+    f1 = 2 * (precision * recall) / (precision + recall)
+
+    # 计算宏观平均的召回率、精确率和F1分数
+    macro_recall = recall.mean()
+    macro_precision = precision.mean()
+    macro_f1 = f1.mean()
+
+    # 计算准确率
+    accuracy = true_positive.sum() / confusion_matrix.sum()
+
     return {
         "accuracy": torch.tensor(accuracy, dtype=torch.float32).cuda(),
+        "macro_recall": torch.tensor(macro_recall, dtype=torch.float32).cuda(),
+        "macro_precision": torch.tensor(macro_precision, dtype=torch.float32).cuda(),
+        "macro_f1": torch.tensor(macro_f1, dtype=torch.float32).cuda(),
         "avg_bleu": torch.tensor(avg_bleu, dtype=torch.float32).cuda(),
         "avg_bert_precision": avg_bert_precision.cuda(),
         "avg_bert_recall": avg_bert_recall.cuda(),
         "avg_bert_f1": avg_bert_f1.cuda()
-    }
+    }, confusion_matrix
+
+def plot_confusion_matrix(confusion_matrix, action_names, filename="temp.jpg"):
+    # 将混淆矩阵转换为NumPy数组
+    confusion_matrix = confusion_matrix.cpu().numpy()
+
+    # 创建一个新的图形
+    fig, ax = plt.subplots()
+    im = ax.imshow(confusion_matrix, interpolation='nearest', cmap=plt.cm.Blues)
+    ax.figure.colorbar(im, ax=ax)
+    ax.set(xticks=np.arange(confusion_matrix.shape[1]),
+           yticks=np.arange(confusion_matrix.shape[0]),
+           xticklabels=action_names, yticklabels=action_names,
+           title="Confusion Matrix",
+           ylabel='True Label',
+           xlabel='Predicted Label')
+
+    # 在每个单元格中添加文本
+    for i in range(confusion_matrix.shape[0]):
+        for j in range(confusion_matrix.shape[1]):
+            ax.text(j, i, format(confusion_matrix[i, j], 'd'),
+                    ha="center", va="center",
+                    color="white" if confusion_matrix[i, j] > (confusion_matrix.max() / 2) else "black")
+
+    # 保存图形
+    fig.savefig(filename)
 
 def run_metrics():
     parser = argparse.ArgumentParser()
@@ -157,7 +207,13 @@ def run_metrics():
 
 
     # 调用metric函数计算指标
-    metrics = calculate_metrics(labels, responses)
+    metrics, confusion_matrix = calculate_metrics(labels, responses)
+
+    # 定义动作名称
+    action_names = ['NS', 'DS', 'EM']
+
+    # 可视化并保存混淆矩阵
+    plot_confusion_matrix(confusion_matrix, action_names)
 
     # 首先，我们将要打印的指标整理成字符串
     metrics_str = """
@@ -165,6 +221,9 @@ def run_metrics():
     {args.from_pretrained}
     {args.json_path}
     准确率: {accuracy:.6f}
+    召回率: {recall:.6f}
+    精确率: {precision:.6f}
+    F1分数: {f1:.6f}
     平均BLEU分数: {avg_bleu:.6f}
     平均BERTScore Precision: {avg_bert_precision:.6f}
     平均BERTScore Recall: {avg_bert_recall:.6f}
@@ -173,15 +232,17 @@ def run_metrics():
 
     # 将指标转换为CPU张量以打印
     accuracy = metrics["accuracy"].cpu().item()
+    recall = metrics["macro_recall"].cpu().item()
+    precision = metrics["macro_precision"].cpu().item()
+    f1 = metrics["macro_f1"].cpu().item()
     avg_bleu = metrics["avg_bleu"].cpu().item()
     avg_bert_precision = metrics["avg_bert_precision"].cpu().item()
     avg_bert_recall = metrics["avg_bert_recall"].cpu().item()
     avg_bert_f1 = metrics["avg_bert_f1"].cpu().item()
 
-    metrics_str = metrics_str.format(args=args, accuracy=accuracy, avg_bleu=avg_bleu,
-                                     avg_bert_precision=avg_bert_precision,
-                                     avg_bert_recall=avg_bert_recall,
-                                     avg_bert_f1=avg_bert_f1)
+    metrics_str = metrics_str.format(args=args, accuracy=accuracy, recall=recall, precision = precision, f1=f1,
+                                    avg_bleu=avg_bleu, avg_bert_precision=avg_bert_precision,
+                                    avg_bert_recall=avg_bert_recall, avg_bert_f1=avg_bert_f1)
 
     # 接下来，我们将这个字符串写入到一个文本文件中，但首先要检查这个文件是否已经存在
     file_path = "/home/AutoGLM/runs/metrics.txt"
