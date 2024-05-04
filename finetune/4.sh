@@ -18,8 +18,8 @@ OPTIONS_NCCL="NCCL_DEBUG=info NCCL_IB_DISABLE=0 NCCL_NET_GDR_LEVEL=2"
 HOST_FILE_PATH="hostfile"
 HOST_FILE_PATH="hostfile_single"
 
-train_data="data/json/1_answer_only/train.json"
-eval_data="data/json/1_answer_only/test.json"
+train_data="data/json/2_reason_answer/train.json"
+eval_data="data/json/2_reason_answer/test.json"
 
 
 gpt_options=" \

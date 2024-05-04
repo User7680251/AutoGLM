@@ -18,8 +18,8 @@ OPTIONS_NCCL="NCCL_DEBUG=info NCCL_IB_DISABLE=0 NCCL_NET_GDR_LEVEL=2"
 HOST_FILE_PATH="hostfile"
 HOST_FILE_PATH="hostfile_single"
 
-train_data="data/json/1_answer_only/train.json"
-eval_data="data/json/1_answer_only/test.json"
+train_data="data/json/2_reason_answer/train.json"
+eval_data="data/json/2_reason_answer/test.json"
 
 
 gpt_options=" \
@@ -45,13 +45,13 @@ gpt_options=" \
        --lr 0.0001 \
        --batch-size 2 \
        --skip-init \
-       --fp16 \
-       --use_qlora
+       --bf16 \
+       --use_ptuning
 "
 
               
 
-run_cmd="${OPTIONS_NCCL} ${OPTIONS_SAT} deepspeed --master_port 16666 --include localhost:0 --hostfile ${HOST_FILE_PATH} finetune_visualglm.py ${gpt_options}"
+run_cmd="${OPTIONS_NCCL} ${OPTIONS_SAT} deepspeed --master_port 16666 --hostfile ${HOST_FILE_PATH} finetune_visualglm.py ${gpt_options}"
 echo ${run_cmd}
 eval ${run_cmd}
 
