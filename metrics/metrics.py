@@ -138,7 +138,7 @@ def plot_confusion_matrix(confusion_matrix, action_names, filename="temp.jpg"):
                     color="white" if confusion_matrix[i, j] > (confusion_matrix.max() / 2) else "black")
 
     # 保存图形
-    fig.savefig(filename)
+    fig.savefig(filename, dpi=300)
 
 def run_metrics():
     parser = argparse.ArgumentParser()
@@ -181,7 +181,7 @@ def run_metrics():
     for item in tqdm(dataset, desc="Sending requests"):
         # 构造请求数据
         data = {
-            "text": "任务：图片中为汽车在行驶，请观察路况并输出按照给定格式输出驾驶动作和推理过程。输出：",
+            "text": item['prompt'],
             "image": image_to_base64(item['img']),
             "history": None
         }
