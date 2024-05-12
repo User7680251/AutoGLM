@@ -14,7 +14,7 @@ def swap_brackets(data):
         if action_match and reason_match:
             action = action_match.group(0)
             reason = reason_match.group(0)
-            swapped_label = label.replace(action, "").replace(reason, "").strip() + reason + action
+            swapped_label = label.replace(action, "").replace(reason, "").strip() + action + reason
             item['label'] = swapped_label
 
     return data

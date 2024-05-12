@@ -3,7 +3,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 # 加载JSON数据
-json_file = 'data/CODA-val-1500/CODA/base-val-1500/output.json'  # 替换为您的JSON文件路径
+json_file = 'data/json/2_reason_answer/test.json'  # 替换为您的JSON文件路径
 with open(json_file, 'r', encoding='utf-8') as f:
     data = json.load(f)
 
